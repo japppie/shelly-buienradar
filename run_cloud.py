@@ -54,6 +54,8 @@ def scheduled_task():
         
         if rain_now > 0 or rain_soon:
             rain = True
+        else:
+            rain = False
 
         params = {
             "id": DEVICE_ID,
