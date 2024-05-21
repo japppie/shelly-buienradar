@@ -1,5 +1,4 @@
 import modal
-import statistics
 import os
 import time
 from dotenv import load_dotenv
@@ -46,13 +45,15 @@ def scheduled_task():
         print(rain_dict)
 
         rain_values = list(rain_dict.values())
-        median_value = statistics.median(rain_values[0:5])
+        average_value = sum(rain_values[2:5]) / len(rain_values[2:5])
 
-        rain_now = rain_values[0] > 5
-        rain_soon = median_value > 15
-        print(f'Is it raining? {rain_now}')
+        rain_now = int(rain_values[0]) + int(rain_values[1])
+        rain_soon = average_value > 10
+        print(f'Is it raining? {rain_now > 0}')
         print(f'Will it rain soon? {rain_soon}')
-        rain = rain_now or rain_soon
+        
+        if rain_now > 0 or rain_soon:
+            rain = True
 
         params = {
             "id": DEVICE_ID,
