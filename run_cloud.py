@@ -64,6 +64,7 @@ def scheduled_task():
             response.raise_for_status()
             result = response.json()
             zonnescherm = float(result['data']['device_status']['cover:0']['current_pos'])
+            print(f'Sunshade is at {zonnescherm}%')
         except requests.RequestException as e:
             print(f"Error fetching device status: {e}")
             return
