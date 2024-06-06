@@ -8,7 +8,7 @@ app = modal.App('shelly_automation')
 
 @app.function(
     secrets=[modal.Secret.from_name("shelly-secret")],
-    schedule=modal.Cron("*/6 * * * *"),  # Every 6 minutes
+    schedule=modal.Cron("*/6 7-23 * * *"),  # Every 6 minutes between 07:00 and 23:00
     image=modal.Image.debian_slim().pip_install("requests", "python-dotenv")
 )
 def scheduled_task():
@@ -42,7 +42,7 @@ def scheduled_task():
             except ValueError as e:
                 print(f"Error parsing rain data line: {line} - {e}")
                 return
-        print(rain_dict)
+        print(f"\n\n{rain_dict}")
 
         rain_values = list(rain_dict.values())
         average_value = sum(rain_values[2:5]) / len(rain_values[2:5])
