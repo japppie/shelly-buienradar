@@ -45,6 +45,9 @@ def scheduled_task():
         print(f"\n\n{rain_dict}")
 
         rain_values = list(rain_dict.values())
+        if len(rain_values[2:5]) == 0:
+            print("Not enough rain data to calculate average.")
+            return
         average_value = sum(rain_values[2:5]) / len(rain_values[2:5])
 
         rain_now = int(rain_values[0]) + int(rain_values[1])

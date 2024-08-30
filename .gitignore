@@ -1,0 +1,8 @@
+# Exclude folders
+__pycache__/
+.venv/
+.vscode/
+
+# Exclude files
+.env
+*.pyc
