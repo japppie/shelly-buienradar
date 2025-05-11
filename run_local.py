@@ -1,8 +1,5 @@
 import requests
-import statistics
-import json
 import time
-
 from dotenv import load_dotenv
 import os
 
@@ -12,61 +9,97 @@ API_URL = os.getenv("API_URL")
 TEST_URL = os.getenv("TEST_URL")
 DEVICE_ID = os.getenv("DEVICE_ID")
 AUTH_KEY = os.getenv("AUTH_KEY")
+WEERLIVE_KEY = os.getenv("WEERLIVE_KEY")
 lat = float(os.getenv("lat"))
 lon = float(os.getenv("lon"))
 
-url = f"https://gadgets.buienradar.nl/data/raintext/?lat={lat}&lon={lon}"
-response = requests.get(url)
-raindata = response.text
+buienradar_url = f"https://gadgets.buienradar.nl/data/raintext/?lat={os.environ['lat']}&lon={os.environ['lon']}"
 
-rain_dict = {}
-for line in raindata.splitlines()[:5]:
-    value, timecode = line.split("|")
-    rain_dict[str(timecode.strip())] = int(value.strip())
 
-rain_values = list(rain_dict.values())
-median_value = statistics.median(rain_values[1:5])
-
-if rain_values[0] > 5:
-    rain = True
-elif median_value > 15:
-    rain = True
-else:
-    rain = False
-
-def check_device_status():
-    params = {
-        "id": DEVICE_ID,
-        "auth_key": AUTH_KEY
-    }
+def _check_device_status():
+    params = {"id": DEVICE_ID, "auth_key": AUTH_KEY}
     response = requests.get(TEST_URL, params=params)
     if response.status_code == 200:
         result = response.json()
         # print(f"Device status: {result}")
-        zonnescherm = float(result['data']['device_status']['cover:0']['current_pos'])
-        return zonnescherm
+        sunscreen_status = int(
+            result["data"]["device_status"]["cover:0"]["current_pos"]
+        )
+        return sunscreen_status
     else:
         print(f"Something went wrong: {response.status_code} - {response.text}")
+        return 100  # assume sunscreen is opened when there is an error (to be safe)
 
-def send_roller_command(direction):
-    data = {
-        "direction": direction,
-        "id": DEVICE_ID,
-        "auth_key": AUTH_KEY
-    }
-    response = requests.post(API_URL, data=data)
-    if response.status_code == 200:
+
+def _check_windbft():
+    url = (
+        f"https://weerlive.nl/api/weerlive_api_v2.php?key={WEERLIVE_KEY}&locatie=Arnhem"
+    )
+    response = requests.get(url)
+    response.raise_for_status()
+    data = response.json()
+    huidige_windbft = data["liveweer"][0]["windbft"]
+    print(f"Huidige windkracht bft: {huidige_windbft}")
+    return huidige_windbft
+
+
+def _check_buienradar():
+    try:
+        response = requests.get(buienradar_url)
+        response.raise_for_status()
+        raindata = response.text
+    except requests.RequestException as e:
+        print(f"Error fetching rain data: {e}")
+        return
+
+    rain_dict = {}
+    for line in raindata.splitlines()[:5]:
+        try:
+            value, timecode = line.split("|")
+            rain_dict[str(timecode.strip())] = int(value.strip())
+        except ValueError as e:
+            print(f"Error parsing rain data line: {line} - {e}")
+            return
+    print(f"\n\n{rain_dict}")
+
+    return list(rain_dict.values())
+
+
+def _check_rain(rain_values):
+    # Check if it's currently raining (first 2 time periods)
+    rain_now = any(value > 0 for value in rain_values[:2])
+
+    # Check if it will rain soon (next 3 time periods)
+    average_rain_soon = sum(rain_values[2:5]) / len(rain_values[2:5])
+    rain_soon = average_rain_soon > 10
+
+    print(f"Is it raining? {rain_now > 0}")
+    print(f"Will it rain soon? {rain_soon}")
+
+    return rain_now or rain_soon
+
+
+def _close_sunscreen():
+    data = {"direction": "close", "id": DEVICE_ID, "auth_key": AUTH_KEY}
+    time.sleep(2)  # Er moet minimaal één seconde tussen twee calls zitten
+    try:
+        response = requests.post(API_URL, data=data)
+        response.raise_for_status()
         result = response.json()
         if result.get("isok"):
-            print(f"Roller is {direction}ed!")
+            print("Sunscreen is closed!")
         else:
             print(f"Something went wrong: {result}")
-    else:
-        print(f"Something went wrong: {response.status_code} - {response.text}")
+    except requests.RequestException as e:
+        print(f"Error closing sunscreen: {e}")
 
-zonnescherm = check_device_status()
-print(f'Zonnescherm staat op {zonnescherm}%')
-time.sleep(2)
 
-if rain and zonnescherm > 0:
-    send_roller_command("close")
+# rain_values = _check_buienradar()  # check buienradar
+# raining = _check_rain(rain_values)  # check rain
+# sunscreen_status = _check_device_status()  # check if sunscreen is open or closed
+
+# if raining and sunscreen_status > 0:
+#     _close_sunscreen()
+
+windbft = _check_windbft()
+print(windbft)
