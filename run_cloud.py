@@ -51,14 +51,15 @@ def scheduled_task():
             print(f"Something went wrong: {response.status_code} - {response.text}")
             return 100  # assume sunscreen is opened when there is an error (to be safe)
 
-    def _check_windbft():
+    def _check_wind():
         url = f"https://weerlive.nl/api/weerlive_api_v2.php?key={WEERLIVE_KEY}&locatie=Arnhem"
         response = requests.get(url)
         response.raise_for_status()
         data = response.json()
-        huidige_windbft = data["liveweer"][0]["windbft"]
-        print(f"Huidige windkracht bft: {huidige_windbft}")
-        return huidige_windbft
+        wind_bft = data["liveweer"][0]["windbft"]
+        wind_kmh = data["liveweer"][0]["windkmh"]
+        print(f"Huidige windkracht bft: {wind_bft} ({wind_kmh} km/h)")
+        return wind_bft, wind_kmh
 
     def _check_buienradar():
         """Fetch and parse rain forecast data from Buienradar API.
@@ -160,12 +161,12 @@ def scheduled_task():
         except requests.RequestException as e:
             print(f"Error closing sunscreen: {e}")
 
-    windbft = _check_windbft()
     rain_values = _check_buienradar()  # check buienradar
     raining = _check_rain(rain_values)  # check rain
+    wind_bft, wind_kmh = _check_wind()
     sunscreen_status = _check_device_status()  # check if sunscreen is open or closed
 
-    if windbft > 4 and raining and sunscreen_status > 0:
+    if wind_bft > 4 and raining and sunscreen_status > 0:
         _close_sunscreen()
 
 
