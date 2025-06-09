@@ -52,14 +52,24 @@ def scheduled_task():
             return 100  # assume sunscreen is opened when there is an error (to be safe)
 
     def _check_wind():
+        import requests  # Ensure requests is imported locally for the function
         url = f"https://weerlive.nl/api/weerlive_api_v2.php?key={WEERLIVE_KEY}&locatie=Arnhem"
-        response = requests.get(url)
-        response.raise_for_status()
-        data = response.json()
-        wind_bft = data["liveweer"][0]["windbft"]
-        wind_kmh = data["liveweer"][0]["windkmh"]
-        print(f"Huidige windkracht bft: {wind_bft} ({wind_kmh} km/h)")
-        return wind_bft, wind_kmh
+        # The following block attempts to fetch wind data from an external API (weerlive.nl).
+        # It includes error handling for requests.exceptions.HTTPError.
+        # If an error occurs (e.g., API is down or returns a non-2xx status code),
+        # default values (0, 0) are returned for wind_bft and wind_kmh respectively,
+        # and an error message detailing the status code and response text is printed.
+        try:
+            response = requests.get(url)
+            response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
+            data = response.json()
+            wind_bft = data["liveweer"][0]["windbft"]
+            wind_kmh = data["liveweer"][0]["windkmh"]
+            print(f"Huidige windkracht bft: {wind_bft} ({wind_kmh} km/h)")
+            return wind_bft, wind_kmh
+        except requests.exceptions.HTTPError as e:
+            print(f"Error fetching wind data: Status {e.response.status_code} - {e.response.text}")
+            return 0, 0  # Return default values in case of an error
 
     def _check_buienradar():
         """Fetch and parse rain forecast data from Buienradar API.
