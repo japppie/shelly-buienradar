@@ -139,8 +139,7 @@ def scheduled_task():
         average_rain_soon = sum(rain_values[2:5]) / len(rain_values[2:5])
         rain_soon = average_rain_soon > 10
 
-        print(f"Is it raining? {rain_now > 0}")
-        print(f"Will it rain soon? {rain_soon}")
+        print(f"Is it raining? [{rain_now > 0}]. Will it rain soon? [{rain_soon}]")
 
         return rain_now or rain_soon
 
@@ -176,7 +175,7 @@ def scheduled_task():
     wind_bft, wind_kmh = _check_wind()
     sunscreen_status = _check_device_status()  # check if sunscreen is open or closed
 
-    if wind_bft > 4 and raining and sunscreen_status > 0:
+    if (wind_bft > 4 or raining) and sunscreen_status > 0:
         _close_sunscreen()
 
 
