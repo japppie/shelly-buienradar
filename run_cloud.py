@@ -62,11 +62,16 @@ def scheduled_task():
         try:
             response = requests.get(url)
             response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
-            data = response.json()
-            wind_bft = data["liveweer"][0]["windbft"]
-            wind_kmh = data["liveweer"][0]["windkmh"]
-            print(f"Huidige windkracht bft: {wind_bft} ({wind_kmh} km/h)")
-            return wind_bft, wind_kmh
+            try:
+                data = response.json()
+                wind_bft = data["liveweer"][0]["windbft"]
+                wind_kmh = data["liveweer"][0]["windkmh"]
+                print(f"Huidige windkracht bft: {wind_bft} ({wind_kmh} km/h)")
+                return wind_bft, wind_kmh
+            except requests.exceptions.JSONDecodeError as e:
+                print(f"Error decoding JSON from wind API: {e}")
+                print(f"Raw response content: {response.text}")
+                return 0, 0  # Return default values in case of JSON decoding error
         except requests.exceptions.HTTPError as e:
             print(f"Error fetching wind data: Status {e.response.status_code} - {e.response.text}")
             return 0, 0  # Return default values in case of an error
