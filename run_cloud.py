@@ -137,6 +137,10 @@ def scheduled_task():
             - First 2 values represent current/very near future
             - Last 3 values represent upcoming forecast
         """
+        if rain_values is None:
+            print("Warning: No rain data available. Assuming no rain and taking no action.")
+            return False # Do nothing if rain data is unavailable
+
         # Check if it's currently raining (first 2 time periods)
         rain_now = any(value > 0 for value in rain_values[:2])
 
