@@ -9,7 +9,9 @@ app = modal.App("shelly_automation")
 @app.function(
     secrets=[modal.Secret.from_name("shelly-secret")],
     schedule=modal.Cron("*/6 7-23 * * *"),  # Every 6 minutes between 07:00 and 23:00
-    image=modal.Image.debian_slim().pip_install("requests", "python-dotenv"),
+    image=modal.Image.debian_slim()
+    .add_local_file("requirements.txt")
+    .run_commands("pip install -r requirements.txt"),
 )
 def scheduled_task():
     import requests

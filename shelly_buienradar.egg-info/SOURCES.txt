@@ -1,0 +1,7 @@
+README.md
+pyproject.toml
+shelly_buienradar.egg-info/PKG-INFO
+shelly_buienradar.egg-info/SOURCES.txt
+shelly_buienradar.egg-info/dependency_links.txt
+shelly_buienradar.egg-info/requires.txt
+shelly_buienradar.egg-info/top_level.txt

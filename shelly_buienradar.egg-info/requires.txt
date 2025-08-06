@@ -1,0 +1,6 @@
+requests
+python-dotenv
+modal
+
+[dev]
+uv

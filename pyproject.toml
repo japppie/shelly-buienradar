@@ -1,0 +1,16 @@
+[project]
+name = "shelly-buienradar"
+version = "0.1.0"
+dependencies = [
+    "requests",
+    "python-dotenv",
+    "modal",
+]
+
+[project.optional-dependencies]
+dev = [
+    "uv",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]

@@ -3,6 +3,32 @@ Sluit zonnescherm als het regent of als het gaat regenen in de komende 20 minute
 Voeg je lattitude en longitude coordinaten toe in je .env file
 Voor automatische checks heb je een (gratis) Modal account nodig op modal.com, in Modal kan je jouw secrets toevoegen zodat je geen local .env meer nodig hebt.
 
+# Local Development Setup
+
+1. **Install `uv`**:
+   Follow the official installation instructions for `uv`: https://docs.astral.sh/uv/getting-started/installation/
+
+2. **Create a virtual environment**:
+   ```bash
+   uv venv
+   ```
+
+3. **Activate the virtual environment**:
+   ```bash
+   source .venv/bin/activate
+   ```
+
+4. **Install dependencies**:
+   ```bash
+   uv pip install -e '.[dev]'
+   ```
+   This will install the project in editable mode with the development dependencies.
+
+   The `requirements.txt` file is generated from `pyproject.toml` for use in the Modal environment. To regenerate it, run:
+   ```bash
+   uv pip compile pyproject.toml --all-extras -o requirements.txt
+   ```
+
 # .env file example:
 ```
 AUTH_KEY=my_auth_key
