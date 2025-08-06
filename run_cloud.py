@@ -39,42 +39,51 @@ def scheduled_task():
             - Values in between represent partial positions
         """
         params = {"id": DEVICE_ID, "auth_key": AUTH_KEY}
-        response = requests.get(TEST_URL, params=params)
-        if response.status_code == 200:
-            result = response.json()
-            # print(f"Device status: {result}")
-            sunscreen_status = int(
-                result["data"]["device_status"]["cover:0"]["current_pos"]
-            )
-            return sunscreen_status
-        else:
-            print(f"Something went wrong: {response.status_code} - {response.text}")
-            return 100  # assume sunscreen is opened when there is an error (to be safe)
+        retries = 3
+        for i in range(retries):
+            try:
+                response = requests.get(TEST_URL, params=params, timeout=10)
+                if response.status_code == 200:
+                    result = response.json()
+                    # print(f"Device status: {result}")
+                    sunscreen_status = int(
+                        result["data"]["device_status"]["cover:0"]["current_pos"]
+                    )
+                    return sunscreen_status
+                else:
+                    print(f"Something went wrong: {response.status_code} - {response.text}")
+            except requests.RequestException as e:
+                print(f"Error checking device status: {e}")
+
+            if i < retries - 1:
+                time.sleep(2 ** (i + 1))  # exponential backoff: 2, 4 seconds
+
+        print("Failed to check device status after several retries.")
+        return 100  # assume sunscreen is opened when there is an error (to be safe)
 
     def _check_wind():
-        import requests  # Ensure requests is imported locally for the function
         url = f"https://weerlive.nl/api/weerlive_api_v2.php?key={WEERLIVE_KEY}&locatie=Arnhem"
-        # The following block attempts to fetch wind data from an external API (weerlive.nl).
-        # It includes error handling for requests.exceptions.HTTPError.
-        # If an error occurs (e.g., API is down or returns a non-2xx status code),
-        # default values (0, 0) are returned for wind_bft and wind_kmh respectively,
-        # and an error message detailing the status code and response text is printed.
-        try:
-            response = requests.get(url)
-            response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
+        retries = 3
+        for i in range(retries):
             try:
+                response = requests.get(url, timeout=10)
+                response.raise_for_status()
                 data = response.json()
                 wind_bft = data["liveweer"][0]["windbft"]
                 wind_kmh = data["liveweer"][0]["windkmh"]
                 print(f"Huidige windkracht bft: {wind_bft} ({wind_kmh} km/h)")
                 return wind_bft, wind_kmh
+            except requests.RequestException as e:
+                print(f"Error fetching wind data: {e}")
             except requests.exceptions.JSONDecodeError as e:
                 print(f"Error decoding JSON from wind API: {e}")
                 print(f"Raw response content: {response.text}")
-                return 0, 0  # Return default values in case of JSON decoding error
-        except requests.exceptions.HTTPError as e:
-            print(f"Error fetching wind data: Status {e.response.status_code} - {e.response.text}")
-            return 0, 0  # Return default values in case of an error
+
+            if i < retries - 1:
+                time.sleep(2 ** (i + 1))
+
+        print("Failed to fetch wind data after several retries.")
+        return 0, 0
 
     def _check_buienradar():
         """Fetch and parse rain forecast data from Buienradar API.
@@ -93,25 +102,31 @@ def scheduled_task():
             - Higher values indicate more intense rain
             The function only processes the first 5 time periods from the forecast.
         """
-        try:
-            response = requests.get(buienradar_url)
-            response.raise_for_status()
-            raindata = response.text
-        except requests.RequestException as e:
-            print(f"Error fetching rain data: {e}")
-            return
-
-        rain_dict = {}
-        for line in raindata.splitlines()[:5]:
+        retries = 3
+        for i in range(retries):
             try:
-                value, timecode = line.split("|")
-                rain_dict[str(timecode.strip())] = int(value.strip())
-            except ValueError as e:
-                print(f"Error parsing rain data line: {line} - {e}")
-                return
-        print(f"\n\n{rain_dict}")
+                response = requests.get(buienradar_url, timeout=10)
+                response.raise_for_status()
+                raindata = response.text
+                rain_dict = {}
+                for line in raindata.splitlines()[:5]:
+                    try:
+                        value, timecode = line.split("|")
+                        rain_dict[str(timecode.strip())] = int(value.strip())
+                    except ValueError as e:
+                        print(f"Error parsing rain data line: {line} - {e}")
+                        return
+                print(f"\n\n{rain_dict}")
 
-        return list(rain_dict.values())
+                return list(rain_dict.values())
+            except requests.RequestException as e:
+                print(f"Error fetching rain data: {e}")
+
+            if i < retries - 1:
+                time.sleep(2 ** (i + 1))
+
+        print("Failed to fetch rain data after several retries.")
+        return
 
     def _check_rain(rain_values):
         """Analyze rain forecast values to determine current and upcoming rain conditions.
@@ -164,16 +179,24 @@ def scheduled_task():
         """
         data = {"direction": "close", "id": DEVICE_ID, "auth_key": AUTH_KEY}
         time.sleep(2)  # Er moet minimaal één seconde tussen twee calls zitten
-        try:
-            response = requests.post(API_URL, data=data)
-            response.raise_for_status()
-            result = response.json()
-            if result.get("isok"):
-                print("Sunscreen is closed!")
-            else:
-                print(f"Something went wrong: {result}")
-        except requests.RequestException as e:
-            print(f"Error closing sunscreen: {e}")
+        retries = 3
+        for i in range(retries):
+            try:
+                response = requests.post(API_URL, data=data, timeout=10)
+                response.raise_for_status()
+                result = response.json()
+                if result.get("isok"):
+                    print("Sunscreen is closed!")
+                    return
+                else:
+                    print(f"Something went wrong: {result}")
+            except requests.RequestException as e:
+                print(f"Error closing sunscreen: {e}")
+
+            if i < retries - 1:
+                time.sleep(2 ** (i + 1))
+
+        print("Failed to close sunscreen after several retries.")
 
     rain_values = _check_buienradar()  # check buienradar
     raining = _check_rain(rain_values)  # check rain
