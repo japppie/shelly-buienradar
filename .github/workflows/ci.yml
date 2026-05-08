@@ -33,3 +33,10 @@ jobs:
 
       - name: Test with pytest
         run: uv run pytest --cov=src/shelly_buienradar --cov-report=xml tests/
+
+      - name: Deploy to Modal
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+          MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+        run: uv run modal deploy run_cloud.py
